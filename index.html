@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تسجيل المحاضرات وتلخيصها</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      direction: rtl;
+      padding: 20px;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #ccc;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      margin-top: 5px;
+    }
+    .section {
+      margin-top: 20px;
+    }
+    audio {
+      width: 100%;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>🎙️ تسجيل المحاضرات</h1>
+  <p style="text-align:center">
+    سجّل صوتك واحصل لاحقًا على نص وملخص وأسئلة
+  </p>
+
+  <button id="startBtn">🎙️ بدء التسجيل</button>
+  <button id="stopBtn" disabled>⏹️ إيقاف التسجيل</button>
+
+  <audio id="audioPlayer" controls style="display:none;"></audio>
+
+  <div class="section">
+    <h3>📄 النص الكامل</h3>
+    <textarea placeholder="سيظهر النص هنا..."></textarea>
+  </div>
+
+  <div class="section">
+    <h3>📌 الملخص</h3>
+    <textarea placeholder="سيظهر الملخص هنا..."></textarea>
+  </div>
+
+  <div class="section">
+    <h3>📝 أسئلة المراجعة</h3>
+    <textarea placeholder="ستظهر الأسئلة هنا..."></textarea>
+  </div>
+</div>
+
+<script>
+let mediaRecorder;
+let audioChunks = [];
+
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const audioPlayer = document.getElementById("audioPlayer");
+
+startBtn.addEventListener("click", async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = event => {
+      audioChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+      const audioURL = URL.createObjectURL(audioBlob);
+      audioPlayer.src = audioURL;
+      audioPlayer.style.display = "block";
+      console.log("تم تسجيل الصوت:", audioBlob);
+    };
+
+    mediaRecorder.start();
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+  } catch (err) {
+    alert("⚠️ لم يتم السماح بالوصول إلى الميكروفون");
+    console.error(err);
+  }
+});
+
+stopBtn.addEventListener("click", () => {
+  mediaRecorder.stop();
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+});
+</script>
+
+</body>
+</html>
