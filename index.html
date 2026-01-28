@@ -40,11 +40,20 @@
       const formData = new FormData();
       formData.append("audio", file);
 
-      const response = await fetch("/api/processAudio", { method: "POST", body: formData });
-      const data = await response.json();
+      try {
+        const response = await fetch("/api/processAudio", { method: "POST", body: formData });
+        const data = await response.json();
 
-      document.getElementById('summary').value = data.summary || "حدث خطأ في التلخيص";
-      document.getElementById('questions').value = data.questions || "حدث خطأ في استخراج الأسئلة";
+        if(data.error){
+          alert("حدث خطأ أثناء معالجة الملف: " + data.error);
+          return;
+        }
+
+        document.getElementById('summary').value = data.summary || "لم يتم إنشاء الملخص";
+        document.getElementById('questions').value = data.questions || "لم يتم إنشاء الأسئلة";
+      } catch(err){
+        alert("حدث خطأ في الاتصال بالخادم: " + err.message);
+      }
     });
 
     downloadPdfBtn.addEventListener('click', () => {
