@@ -57,9 +57,8 @@ const downloadBtn = document.getElementById("downloadBtn");
 async function ocrFiles(files) {
   let fullText = "";
   for (let file of files) {
-    const img = file.type.includes("image") ? file : null;
-    if (img) {
-      const { data: { text } } = await Tesseract.recognize(img, 'ara+eng+fra');
+    if (file.type.includes("image")) {
+      const { data: { text } } = await Tesseract.recognize(file, 'ara+eng+fra');
       fullText += text + "\n";
     } else if(file.type === "application/pdf") {
       fullText += "[PDF غير مدعوم OCR بعد]\n";
@@ -78,7 +77,7 @@ analyzeBtn.addEventListener("click", async () => {
 
   if (fileInput.files.length > 0) {
     const ocrText = await ocrFiles(fileInput.files);
-    text = text + "\n" + ocrText;
+    text += "\n" + ocrText;
   }
 
   if (!text) {
