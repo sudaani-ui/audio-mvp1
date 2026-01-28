@@ -2,120 +2,58 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>تسجيل المحاضرات وتلخيصها</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>منصة تلخيص المحاضرات AI</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f2f2f2;
-      direction: rtl;
-      padding: 20px;
-    }
-    .container {
-      max-width: 700px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    h1 {
-      text-align: center;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    button:disabled {
-      background: #ccc;
-    }
-    textarea {
-      width: 100%;
-      height: 120px;
-      margin-top: 5px;
-    }
-    .section {
-      margin-top: 20px;
-    }
-    audio {
-      width: 100%;
-      margin-top: 10px;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; color: #333; }
+    h1, h2 { color: #111; }
+    input, button, textarea { display: block; margin: 10px 0; padding: 10px; width: 100%; max-width: 500px; }
+    button { background: black; color: white; border: none; cursor: pointer; border-radius: 5px; }
+    button:hover { background: #333; }
+    textarea { resize: vertical; }
   </style>
 </head>
-
 <body>
+  <h1>منصة تلخيص المحاضرات AI</h1>
 
-<div class="container">
-  <h1>🎙️ تسجيل المحاضرات</h1>
-  <p style="text-align:center">
-    سجّل صوتك واحصل لاحقًا على نص وملخص وأسئلة
-  </p>
+  <h2>رفع المحاضرة الصوتية</h2>
+  <input type="file" id="audioFile" accept="audio/*">
+  <button id="uploadBtn">رفع الملف وتحليل الصوت</button>
 
-  <button id="startBtn">🎙️ بدء التسجيل</button>
-  <button id="stopBtn" disabled>⏹️ إيقاف التسجيل</button>
+  <h2>ملخص المحاضرة</h2>
+  <textarea id="summary" rows="10" placeholder="الملخص سيظهر هنا"></textarea>
 
-  <audio id="audioPlayer" controls style="display:none;"></audio>
+  <h2>أسئلة المحاضرة</h2>
+  <textarea id="questions" rows="10" placeholder="الأسئلة ستظهر هنا"></textarea>
 
-  <div class="section">
-    <h3>📄 النص الكامل</h3>
-    <textarea placeholder="سيظهر النص هنا..."></textarea>
-  </div>
+  <button id="downloadPdfBtn">تحميل الملخص PDF</button>
 
-  <div class="section">
-    <h3>📌 الملخص</h3>
-    <textarea placeholder="سيظهر الملخص هنا..."></textarea>
-  </div>
+  <script>
+    const uploadBtn = document.getElementById('uploadBtn');
+    const downloadPdfBtn = document.getElementById('downloadPdfBtn');
 
-  <div class="section">
-    <h3>📝 أسئلة المراجعة</h3>
-    <textarea placeholder="ستظهر الأسئلة هنا..."></textarea>
-  </div>
-</div>
+    uploadBtn.addEventListener('click', async () => {
+      const file = document.getElementById('audioFile').files[0];
+      if (!file) return alert("اختر ملف صوتي أولاً!");
 
-<script>
-let mediaRecorder;
-let audioChunks = [];
+      const formData = new FormData();
+      formData.append("audio", file);
 
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
-const audioPlayer = document.getElementById("audioPlayer");
+      const response = await fetch("/api/processAudio", { method: "POST", body: formData });
+      const data = await response.json();
 
-startBtn.addEventListener("click", async () => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
+      document.getElementById('summary').value = data.summary || "حدث خطأ في التلخيص";
+      document.getElementById('questions').value = data.questions || "حدث خطأ في استخراج الأسئلة";
+    });
 
-    mediaRecorder.ondataavailable = event => {
-      audioChunks.push(event.data);
-    };
-
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-      const audioURL = URL.createObjectURL(audioBlob);
-      audioPlayer.src = audioURL;
-      audioPlayer.style.display = "block";
-      console.log("تم تسجيل الصوت:", audioBlob);
-    };
-
-    mediaRecorder.start();
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-  } catch (err) {
-    alert("⚠️ لم يتم السماح بالوصول إلى الميكروفون");
-    console.error(err);
-  }
-});
-
-stopBtn.addEventListener("click", () => {
-  mediaRecorder.stop();
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-});
-</script>
-
+    downloadPdfBtn.addEventListener('click', () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const summaryText = document.getElementById('summary').value;
+      doc.text(summaryText, 10, 10);
+      doc.save("summary.pdf");
+    });
+  </script>
 </body>
 </html>
