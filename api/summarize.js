@@ -3,13 +3,16 @@ import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   try {
     let { text } = req.body;
 
-    if (!text || text.trim().length === 0)
+    if (!text || text.trim().length === 0) {
       return res.status(400).json({ error: "يرجى إدخال نص للتحليل" });
+    }
 
     // تقريبًا 10 صفحات = 7000 كلمة
     let words = text.split(/\s+/);
@@ -38,7 +41,9 @@ export default async function handler(req, res) {
     // فصل الملخص عن الأسئلة
     let summary = summaryText;
     let questions = "لا توجد أسئلة";
-    const match = summaryText.match(/(ملخص|Summary|Résumé)\s*[:\-]?\s*(.+?)\s*(أسئلة|Questions|Questions)\s*[:\-]?\s*(.+)/is);
+    const match = summaryText.match(
+      /(ملخص|Summary|Résumé)\s*[:\-]?\s*(.+?)\s*(أسئلة|Questions|Questions)\s*[:\-]?\s*(.+)/is
+    );
     if (match) {
       summary = match[2].trim();
       questions = match[4].trim();
