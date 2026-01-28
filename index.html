@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>منصة تلخيص المحاضرات AI</title>
 <style>
-  body { font-family: Arial, sans-serif; background: #f5f6fa; margin:0; padding:0; }
-  header { background:#1e1e2f; color:white; padding:20px; text-align:center; font-size:1.8em; }
-  main { max-width:900px; margin:30px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
-  input[type=file] { display:block; margin-top:10px; }
-  textarea { width:100%; height:150px; padding:10px; font-size:1em; border-radius:5px; border:1px solid #ccc; resize:vertical; margin-top:10px; }
-  button { background:#1e1e2f; color:white; padding:12px 20px; border:none; border-radius:5px; cursor:pointer; font-size:1em; transition:0.3s; margin-top:10px; }
-  button:hover { background:#5757a2; }
-  .output { margin-top:20px; padding:15px; background:#f0f0f5; border-radius:5px; }
-  h2 { color:#1e1e2f; }
-  #loader { display:none; text-align:center; margin-top:10px; }
+body { font-family: Arial, sans-serif; background: #f5f6fa; margin:0; padding:0; }
+header { background:#1e1e2f; color:white; padding:20px; text-align:center; font-size:1.8em; }
+main { max-width:900px; margin:30px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
+input[type=file] { display:block; margin-top:10px; }
+textarea { width:100%; height:150px; padding:10px; font-size:1em; border-radius:5px; border:1px solid #ccc; resize:vertical; margin-top:10px; }
+button { background:#1e1e2f; color:white; padding:12px 20px; border:none; border-radius:5px; cursor:pointer; font-size:1em; transition:0.3s; margin-top:10px; }
+button:hover { background:#5757a2; }
+.output { margin-top:20px; padding:15px; background:#f0f0f5; border-radius:5px; }
+h2 { color:#1e1e2f; }
+#loader { display:none; text-align:center; margin-top:10px; }
 </style>
 </head>
 <body>
@@ -22,24 +22,24 @@
   منصة تلخيص المحاضرات AI
 </header>
 <main>
-  <h2>رفع الصور أو PDF الممسوح ضوئيًا (عربي، إنجليزي، فرنسي)</h2>
-  <input type="file" id="fileInput" multiple accept="image/*,.pdf">
-  <h2>أو إدخال النص مباشرة</h2>
-  <textarea id="lectureText" placeholder="انسخ النص هنا..."></textarea>
-  <button id="analyzeBtn">تحليل المحاضرة</button>
-  <div id="loader">جارٍ التحليل ... ⏳</div>
+<h2>رفع الصور أو PDF الممسوح ضوئيًا (عربي، إنجليزي، فرنسي)</h2>
+<input type="file" id="fileInput" multiple accept="image/*,.pdf">
+<h2>أو إدخال النص مباشرة</h2>
+<textarea id="lectureText" placeholder="انسخ النص هنا..."></textarea>
+<button id="analyzeBtn">تحليل المحاضرة</button>
+<div id="loader">جارٍ التحليل ... ⏳</div>
 
-  <div class="output" id="summaryBox" style="display:none;">
-    <h2>ملخص المحاضرة</h2>
-    <p id="summaryContent"></p>
-  </div>
+<div class="output" id="summaryBox" style="display:none;">
+  <h2>ملخص المحاضرة</h2>
+  <p id="summaryContent"></p>
+</div>
 
-  <div class="output" id="questionsBox" style="display:none;">
-    <h2>أسئلة المحاضرة</h2>
-    <p id="questionsContent"></p>
-  </div>
+<div class="output" id="questionsBox" style="display:none;">
+  <h2>أسئلة المحاضرة</h2>
+  <p id="questionsContent"></p>
+</div>
 
-  <button id="downloadBtn" style="display:none;">تحميل PDF</button>
+<button id="downloadBtn" style="display:none;">تحميل الملخص + الأسئلة PDF</button>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
@@ -59,7 +59,6 @@ async function ocrFiles(files) {
   for (let file of files) {
     const img = file.type.includes("image") ? file : null;
     if (img) {
-      // دعم العربية + الإنجليزية + الفرنسية
       const { data: { text } } = await Tesseract.recognize(img, 'ara+eng+fra');
       fullText += text + "\n";
     } else if(file.type === "application/pdf") {
@@ -90,7 +89,7 @@ analyzeBtn.addEventListener("click", async () => {
   const words = text.split(/\s+/).length;
   if (words > 70000) {
     loader.style.display = "none";
-    return alert("النص طويل جدًا، الحد الأقصى 100 صفحة تقريبًا!");
+    return alert("النص طويل جدًا، الحد الأقصى ~100 صفحة");
   }
 
   try {
@@ -102,8 +101,8 @@ analyzeBtn.addEventListener("click", async () => {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    summaryContent.textContent = data.summary;
-    questionsContent.textContent = data.questions;
+    summaryContent.textContent = data.summary || "لا يوجد ملخص";
+    questionsContent.textContent = data.questions || "لا توجد أسئلة";
     summaryBox.style.display = "block";
     questionsBox.style.display = "block";
     downloadBtn.style.display = "inline-block";
