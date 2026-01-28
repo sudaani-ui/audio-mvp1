@@ -4,109 +4,129 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>منصة تلخيص المحاضرات AI</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; color: #333; }
-h1, h2 { color: #111; }
-input, button, textarea { display: block; margin: 10px 0; padding: 10px; width: 100%; max-width: 500px; }
-button { background: black; color: white; border: none; cursor: pointer; border-radius: 5px; }
-button:hover { background: #333; }
-textarea { resize: vertical; }
+  body { font-family: Arial, sans-serif; background: #f5f6fa; margin:0; padding:0; }
+  header { background:#1e1e2f; color:white; padding:20px; text-align:center; font-size:1.8em; }
+  main { max-width:900px; margin:30px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
+  input[type=file] { display:block; margin-top:10px; }
+  textarea { width:100%; height:150px; padding:10px; font-size:1em; border-radius:5px; border:1px solid #ccc; resize:vertical; margin-top:10px; }
+  button { background:#1e1e2f; color:white; padding:12px 20px; border:none; border-radius:5px; cursor:pointer; font-size:1em; transition:0.3s; margin-top:10px; }
+  button:hover { background:#5757a2; }
+  .output { margin-top:20px; padding:15px; background:#f0f0f5; border-radius:5px; }
+  h2 { color:#1e1e2f; }
+  #loader { display:none; text-align:center; margin-top:10px; }
 </style>
 </head>
 <body>
-<h1>منصة تلخيص المحاضرات AI</h1>
+<header>
+  منصة تلخيص المحاضرات AI
+</header>
+<main>
+  <h2>رفع الصور أو PDF الممسوح ضوئيًا (عربي، إنجليزي، فرنسي)</h2>
+  <input type="file" id="fileInput" multiple accept="image/*,.pdf">
+  <h2>أو إدخال النص مباشرة</h2>
+  <textarea id="lectureText" placeholder="انسخ النص هنا..."></textarea>
+  <button id="analyzeBtn">تحليل المحاضرة</button>
+  <div id="loader">جارٍ التحليل ... ⏳</div>
 
-<h2>رفع المحاضرة الصوتية</h2>
-<input type="file" id="audioFile" accept="audio/*">
-<button id="uploadBtn">رفع الملف وتحليل الصوت</button>
+  <div class="output" id="summaryBox" style="display:none;">
+    <h2>ملخص المحاضرة</h2>
+    <p id="summaryContent"></p>
+  </div>
 
-<h2>أو التسجيل المباشر</h2>
-<button id="startRec">ابدأ التسجيل</button>
-<button id="stopRec" disabled>إيقاف التسجيل وتحليل الصوت</button>
+  <div class="output" id="questionsBox" style="display:none;">
+    <h2>أسئلة المحاضرة</h2>
+    <p id="questionsContent"></p>
+  </div>
 
-<h2>ملخص المحاضرة</h2>
-<textarea id="summary" rows="10" placeholder="الملخص سيظهر هنا"></textarea>
+  <button id="downloadBtn" style="display:none;">تحميل PDF</button>
+</main>
 
-<h2>أسئلة المحاضرة</h2>
-<textarea id="questions" rows="10" placeholder="الأسئلة ستظهر هنا"></textarea>
-
-<button id="downloadPdfBtn">تحميل الملخص PDF</button>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-const uploadBtn = document.getElementById('uploadBtn');
-const startRec = document.getElementById('startRec');
-const stopRec = document.getElementById('stopRec');
-const downloadPdfBtn = document.getElementById('downloadPdfBtn');
-let mediaRecorder, audioChunks = [];
+const fileInput = document.getElementById("fileInput");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const loader = document.getElementById("loader");
+const summaryBox = document.getElementById("summaryBox");
+const questionsBox = document.getElementById("questionsBox");
+const summaryContent = document.getElementById("summaryContent");
+const questionsContent = document.getElementById("questionsContent");
+const downloadBtn = document.getElementById("downloadBtn");
 
-// رفع الملف
-uploadBtn.addEventListener('click', async () => {
-  const file = document.getElementById('audioFile').files[0];
-  if (!file) return alert("اختر ملف صوتي أولاً!");
-  const formData = new FormData();
-  formData.append("audio", file);
-  await sendAudio(formData);
-});
-
-// بدء التسجيل
-startRec.addEventListener('click', async () => {
-  audioChunks = [];
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream);
-  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-  mediaRecorder.start();
-  startRec.disabled = true;
-  stopRec.disabled = false;
-});
-
-// إيقاف التسجيل وتحليل الصوت
-stopRec.addEventListener('click', async () => {
-  mediaRecorder.stop();
-  mediaRecorder.onstop = async () => {
-    const blob = new Blob(audioChunks, { type: 'audio/wav' });
-    const formData = new FormData();
-    formData.append("audio", blob, "recording.wav");
-    await sendAudio(formData);
-  };
-  startRec.disabled = false;
-  stopRec.disabled = true;
-});
-
-// إرسال الملف للـ API
-async function sendAudio(formData){
-  try {
-    const response = await fetch("/api/processAudio", { method: "POST", body: formData });
-    const data = await response.json();
-
-    if(data.error){
-      alert("حدث خطأ أثناء المعالجة: " + data.error);
-      document.getElementById('summary').value = "";
-      document.getElementById('questions').value = "";
-      return;
+async function ocrFiles(files) {
+  let fullText = "";
+  for (let file of files) {
+    const img = file.type.includes("image") ? file : null;
+    if (img) {
+      // دعم العربية + الإنجليزية + الفرنسية
+      const { data: { text } } = await Tesseract.recognize(img, 'ara+eng+fra');
+      fullText += text + "\n";
+    } else if(file.type === "application/pdf") {
+      fullText += "[PDF غير مدعوم OCR بعد]\n";
     }
-
-    document.getElementById('summary').value = data.summary || "لم يتم إنشاء الملخص";
-    document.getElementById('questions').value = data.questions || "لم يتم إنشاء الأسئلة بعد";
-
-  } catch(err){
-    alert("حدث خطأ في الاتصال بالخادم: " + err.message);
-    document.getElementById('summary').value = "";
-    document.getElementById('questions').value = "";
   }
+  return fullText;
 }
 
-// تحميل PDF
-downloadPdfBtn.addEventListener('click', () => {
-  const { jsPDF } = window.jspdf;
-  const summaryText = document.getElementById('summary').value.trim();
-  if(!summaryText){
-    alert("لا يوجد ملخص لتحميله بعد");
-    return;
+analyzeBtn.addEventListener("click", async () => {
+  loader.style.display = "block";
+  summaryBox.style.display = "none";
+  questionsBox.style.display = "none";
+  downloadBtn.style.display = "none";
+
+  let text = document.getElementById("lectureText").value.trim();
+
+  if (fileInput.files.length > 0) {
+    const ocrText = await ocrFiles(fileInput.files);
+    text = text + "\n" + ocrText;
   }
+
+  if (!text) {
+    loader.style.display = "none";
+    return alert("يرجى إدخال نص أو رفع صور أولاً!");
+  }
+
+  const words = text.split(/\s+/).length;
+  if (words > 70000) {
+    loader.style.display = "none";
+    return alert("النص طويل جدًا، الحد الأقصى 100 صفحة تقريبًا!");
+  }
+
+  try {
+    const res = await fetch("/api/summarize", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    summaryContent.textContent = data.summary;
+    questionsContent.textContent = data.questions;
+    summaryBox.style.display = "block";
+    questionsBox.style.display = "block";
+    downloadBtn.style.display = "inline-block";
+
+  } catch(err) {
+    alert("حدث خطأ: " + err.message);
+  } finally {
+    loader.style.display = "none";
+  }
+});
+
+downloadBtn.addEventListener("click", () => {
+  const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  doc.text(summaryText, 10, 10);
-  doc.save("summary.pdf");
+  doc.setFontSize(14);
+  doc.text("ملخص المحاضرة:", 10, 20);
+  doc.setFontSize(12);
+  doc.text(summaryContent.textContent || "لا يوجد ملخص", 10, 30, { maxWidth:180 });
+  doc.setFontSize(14);
+  doc.text("أسئلة المحاضرة:", 10, 100);
+  doc.setFontSize(12);
+  doc.text(questionsContent.textContent || "لا توجد أسئلة", 10, 110, { maxWidth:180 });
+  doc.save("lecture_summary.pdf");
 });
 </script>
 </body>
