@@ -1,68 +1,113 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>منصة تلخيص المحاضرات AI</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; color: #333; }
-    h1, h2 { color: #111; }
-    input, button, textarea { display: block; margin: 10px 0; padding: 10px; width: 100%; max-width: 500px; }
-    button { background: black; color: white; border: none; cursor: pointer; border-radius: 5px; }
-    button:hover { background: #333; }
-    textarea { resize: vertical; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منصة تلخيص المحاضرات AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; color: #333; }
+h1, h2 { color: #111; }
+input, button, textarea { display: block; margin: 10px 0; padding: 10px; width: 100%; max-width: 500px; }
+button { background: black; color: white; border: none; cursor: pointer; border-radius: 5px; }
+button:hover { background: #333; }
+textarea { resize: vertical; }
+</style>
 </head>
 <body>
-  <h1>منصة تلخيص المحاضرات AI</h1>
+<h1>منصة تلخيص المحاضرات AI</h1>
 
-  <h2>رفع المحاضرة الصوتية</h2>
-  <input type="file" id="audioFile" accept="audio/*">
-  <button id="uploadBtn">رفع الملف وتحليل الصوت</button>
+<h2>رفع المحاضرة الصوتية</h2>
+<input type="file" id="audioFile" accept="audio/*">
+<button id="uploadBtn">رفع الملف وتحليل الصوت</button>
 
-  <h2>ملخص المحاضرة</h2>
-  <textarea id="summary" rows="10" placeholder="الملخص سيظهر هنا"></textarea>
+<h2>أو التسجيل المباشر</h2>
+<button id="startRec">ابدأ التسجيل</button>
+<button id="stopRec" disabled>إيقاف التسجيل وتحليل الصوت</button>
 
-  <h2>أسئلة المحاضرة</h2>
-  <textarea id="questions" rows="10" placeholder="الأسئلة ستظهر هنا"></textarea>
+<h2>ملخص المحاضرة</h2>
+<textarea id="summary" rows="10" placeholder="الملخص سيظهر هنا"></textarea>
 
-  <button id="downloadPdfBtn">تحميل الملخص PDF</button>
+<h2>أسئلة المحاضرة</h2>
+<textarea id="questions" rows="10" placeholder="الأسئلة ستظهر هنا"></textarea>
 
-  <script>
-    const uploadBtn = document.getElementById('uploadBtn');
-    const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+<button id="downloadPdfBtn">تحميل الملخص PDF</button>
 
-    uploadBtn.addEventListener('click', async () => {
-      const file = document.getElementById('audioFile').files[0];
-      if (!file) return alert("اختر ملف صوتي أولاً!");
+<script>
+const uploadBtn = document.getElementById('uploadBtn');
+const startRec = document.getElementById('startRec');
+const stopRec = document.getElementById('stopRec');
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+let mediaRecorder, audioChunks = [];
 
-      const formData = new FormData();
-      formData.append("audio", file);
+// رفع الملف
+uploadBtn.addEventListener('click', async () => {
+  const file = document.getElementById('audioFile').files[0];
+  if (!file) return alert("اختر ملف صوتي أولاً!");
+  const formData = new FormData();
+  formData.append("audio", file);
+  await sendAudio(formData);
+});
 
-      try {
-        const response = await fetch("/api/processAudio", { method: "POST", body: formData });
-        const data = await response.json();
+// بدء التسجيل
+startRec.addEventListener('click', async () => {
+  audioChunks = [];
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+  mediaRecorder.start();
+  startRec.disabled = true;
+  stopRec.disabled = false;
+});
 
-        if(data.error){
-          alert("حدث خطأ أثناء معالجة الملف: " + data.error);
-          return;
-        }
+// إيقاف التسجيل وتحليل الصوت
+stopRec.addEventListener('click', async () => {
+  mediaRecorder.stop();
+  mediaRecorder.onstop = async () => {
+    const blob = new Blob(audioChunks, { type: 'audio/wav' });
+    const formData = new FormData();
+    formData.append("audio", blob, "recording.wav");
+    await sendAudio(formData);
+  };
+  startRec.disabled = false;
+  stopRec.disabled = true;
+});
 
-        document.getElementById('summary').value = data.summary || "لم يتم إنشاء الملخص";
-        document.getElementById('questions').value = data.questions || "لم يتم إنشاء الأسئلة";
-      } catch(err){
-        alert("حدث خطأ في الاتصال بالخادم: " + err.message);
-      }
-    });
+// إرسال الملف للـ API
+async function sendAudio(formData){
+  try {
+    const response = await fetch("/api/processAudio", { method: "POST", body: formData });
+    const data = await response.json();
 
-    downloadPdfBtn.addEventListener('click', () => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const summaryText = document.getElementById('summary').value;
-      doc.text(summaryText, 10, 10);
-      doc.save("summary.pdf");
-    });
-  </script>
+    if(data.error){
+      alert("حدث خطأ أثناء المعالجة: " + data.error);
+      document.getElementById('summary').value = "";
+      document.getElementById('questions').value = "";
+      return;
+    }
+
+    document.getElementById('summary').value = data.summary || "لم يتم إنشاء الملخص";
+    document.getElementById('questions').value = data.questions || "لم يتم إنشاء الأسئلة بعد";
+
+  } catch(err){
+    alert("حدث خطأ في الاتصال بالخادم: " + err.message);
+    document.getElementById('summary').value = "";
+    document.getElementById('questions').value = "";
+  }
+}
+
+// تحميل PDF
+downloadPdfBtn.addEventListener('click', () => {
+  const { jsPDF } = window.jspdf;
+  const summaryText = document.getElementById('summary').value.trim();
+  if(!summaryText){
+    alert("لا يوجد ملخص لتحميله بعد");
+    return;
+  }
+  const doc = new jsPDF();
+  doc.text(summaryText, 10, 10);
+  doc.save("summary.pdf");
+});
+</script>
 </body>
 </html>
