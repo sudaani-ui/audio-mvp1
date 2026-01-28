@@ -3,22 +3,33 @@ import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error:"Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const { text } = req.body;
-    if (!text || text.trim().length === 0) 
-      return res.status(400).json({ error:"يرجى إدخال نص للتحليل" });
+    let { text } = req.body;
 
-    const words = text.split(/\s+/).length;
-    if (words > 70000)
-      return res.status(400).json({ error:"النص طويل جدًا، الحد الأقصى ~100 صفحة" });
+    if (!text || text.trim().length === 0)
+      return res.status(400).json({ error: "يرجى إدخال نص للتحليل" });
+
+    // تقريبًا 10 صفحات = 7000 كلمة
+    let words = text.split(/\s+/);
+    if (words.length > 7000) {
+      words = words.slice(0, 7000);
+      text = words.join(" ");
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "أنت مساعد ذكي قادر على تلخيص المحاضرات وإنتاج أسئلة تعليمية. دعم العربية + الإنجليزية + الفرنسية." },
-        { role: "user", content: `لخص النص التالي واكتب أسئلة عليه:\n\n${text}` }
+        {
+          role: "system",
+          content:
+            "أنت مساعد ذكي قادر على تلخيص المحاضرات وإنتاج أسئلة تعليمية. دعم العربية + الإنجليزية + الفرنسية."
+        },
+        {
+          role: "user",
+          content: `لخص النص التالي واكتب أسئلة عليه (حد أقصى 10 صفحات):\n\n${text}`
+        }
       ]
     });
 
@@ -34,7 +45,6 @@ export default async function handler(req, res) {
     }
 
     res.status(200).json({ summary, questions });
-
   } catch (error) {
     console.error("API Error:", error);
     res.status(500).json({ error: "حدث خطأ أثناء التلخيص. حاول مرة أخرى." });
