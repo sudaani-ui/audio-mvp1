@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منصة تلخيص المحاضرات AI</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f5f6fa; margin:0; padding:0; }
+  header { background:#1e1e2f; color:white; padding:20px; text-align:center; font-size:1.8em; }
+  main { max-width:900px; margin:30px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
+  textarea { width:100%; height:200px; padding:10px; font-size:1em; border-radius:5px; border:1px solid #ccc; resize:vertical; }
+  button { background:#1e1e2f; color:white; padding:12px 20px; border:none; border-radius:5px; cursor:pointer; font-size:1em; transition:0.3s; margin-top:10px; }
+  button:hover { background:#5757a2; }
+  .output { margin-top:20px; padding:15px; background:#f0f0f5; border-radius:5px; }
+  h2 { color:#1e1e2f; }
+  #loader { display:none; text-align:center; margin-top:10px; }
+</style>
+</head>
+<body>
+<header>
+  منصة تلخيص المحاضرات AI
+</header>
+<main>
+  <label for="lectureText">أدخل نص المحاضرة (حتى 100 صفحة تقريبًا):</label>
+  <textarea id="lectureText" placeholder="انسخ النص هنا..."></textarea>
+  <button id="analyzeBtn">تحليل المحاضرة</button>
+  <div id="loader">جارٍ التحليل ... ⏳</div>
+
+  <div class="output" id="summaryBox" style="display:none;">
+    <h2>ملخص المحاضرة</h2>
+    <p id="summaryContent"></p>
+  </div>
+
+  <div class="output" id="questionsBox" style="display:none;">
+    <h2>أسئلة المحاضرة</h2>
+    <p id="questionsContent"></p>
+  </div>
+
+  <button id="downloadBtn" style="display:none;">تحميل PDF</button>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const analyzeBtn = document.getElementById("analyzeBtn");
+const loader = document.getElementById("loader");
+const summaryBox = document.getElementById("summaryBox");
+const questionsBox = document.getElementById("questionsBox");
+const summaryContent = document.getElementById("summaryContent");
+const questionsContent = document.getElementById("questionsContent");
+const downloadBtn = document.getElementById("downloadBtn");
+
+analyzeBtn.addEventListener("click", async () => {
+  const text = document.getElementById("lectureText").value.trim();
+  if (!text) return alert("يرجى إدخال نص المحاضرة أولاً!");
+
+  // التحقق من الحد الأقصى 100 صفحة (~70 ألف كلمة)
+  const words = text.split(/\s+/).length;
+  if (words > 70000) return alert("النص طويل جدًا، الحد الأقصى 100 صفحة تقريبًا!");
+
+  summaryBox.style.display = "none";
+  questionsBox.style.display = "none";
+  downloadBtn.style.display = "none";
+  loader.style.display = "block";
+
+  try {
+    const res = await fetch("/api/summarize", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    summaryContent.textContent = data.summary;
+    questionsContent.textContent = data.questions;
+    summaryBox.style.display = "block";
+    questionsBox.style.display = "block";
+    downloadBtn.style.display = "inline-block";
+
+  } catch(err) {
+    alert("حدث خطأ: " + err.message);
+  } finally {
+    loader.style.display = "none";
+  }
+});
+
+// زر تحميل PDF
+downloadBtn.addEventListener("click", () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text("ملخص المحاضرة:", 10, 20);
+  doc.setFontSize(12);
+  doc.text(summaryContent.textContent || "لا يوجد ملخص", 10, 30, { maxWidth:180 });
+  doc.setFontSize(14);
+  doc.text("أسئلة المحاضرة:", 10, doc.lastAutoTable ? doc.lastAutoTable.finalY+20 : 70);
+  doc.setFontSize(12);
+  doc.text(questionsContent.textContent || "لا توجد أسئلة", 10, doc.lastAutoTable ? doc.lastAutoTable.finalY+30 : 80, { maxWidth:180 });
+  doc.save("lecture_summary.pdf");
+});
+</script>
+</body>
+</html>
