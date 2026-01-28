@@ -18,12 +18,10 @@ h2 { color:#1e1e2f; }
 </style>
 </head>
 <body>
-<header>
-  منصة تلخيص المحاضرات AI
-</header>
+<header>منصة تلخيص المحاضرات AI</header>
 <main>
-<h2>رفع الصور أو PDF الممسوح ضوئيًا (عربي، إنجليزي، فرنسي)</h2>
-<input type="file" id="fileInput" multiple accept="image/*,.pdf">
+<h2>رفع الصور الممسوحة ضوئيًا (عربي، إنجليزي، فرنسي)</h2>
+<input type="file" id="fileInput" multiple accept="image/*">
 <h2>أو إدخال النص مباشرة</h2>
 <textarea id="lectureText" placeholder="انسخ النص هنا..."></textarea>
 <button id="analyzeBtn">تحليل المحاضرة (10 صفحات فقط)</button>
@@ -57,12 +55,8 @@ const downloadBtn = document.getElementById("downloadBtn");
 async function ocrFiles(files) {
   let fullText = "";
   for (let file of files) {
-    if (file.type.includes("image")) {
-      const { data: { text } } = await Tesseract.recognize(file, 'ara+eng+fra');
-      fullText += text + "\n";
-    } else if(file.type === "application/pdf") {
-      fullText += "[PDF غير مدعوم OCR بعد]\n";
-    }
+    const { data: { text } } = await Tesseract.recognize(file, 'ara+eng+fra');
+    fullText += text + "\n";
   }
   return fullText;
 }
