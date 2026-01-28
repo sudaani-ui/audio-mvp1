@@ -1,36 +1,29 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8">
-<title>تحليل المحاضرات</title>
-<style>
-  body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
-  textarea { width: 100%; height: 150px; }
-  button { padding: 10px 20px; margin: 10px 0; cursor: pointer; }
-  pre { background: #fff; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
-</style>
+  <meta charset="UTF-8">
+  <title>اختبار مفتاح OpenAI</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #000; color: #fff; border: none; border-radius: 5px; }
+    pre { background: #eee; padding: 10px; border-radius: 5px; margin-top: 10px; }
+  </style>
 </head>
 <body>
-<h2>تحليل المحاضرة (ملخص + أسئلة)</h2>
 
-<textarea id="lectureText" placeholder="أدخل نص المحاضرة هنا..."></textarea>
-<br>
+<h1>اختبار مفتاح OpenAI</h1>
 <button id="testKeyBtn">اختبار المفتاح</button>
-<button id="summarizeBtn">تحليل المحاضرة</button>
-
-<h3>نتيجة اختبار المفتاح:</h3>
 <pre id="testKeyResult"></pre>
-
-<h3>الملخص والأسئلة:</h3>
-<pre id="summaryResult"></pre>
 
 <script>
 document.getElementById("testKeyBtn").addEventListener("click", async () => {
   const resultEl = document.getElementById("testKeyResult");
   resultEl.textContent = "جارٍ الاختبار...";
+
   try {
     const response = await fetch("/api/testKey");
     const data = await response.json();
+
     if (data.success) {
       resultEl.textContent = "✅ المفتاح صالح. الموديلات المتاحة:\n" + data.models.join(", ");
     } else {
@@ -40,34 +33,7 @@ document.getElementById("testKeyBtn").addEventListener("click", async () => {
     resultEl.textContent = "❌ حدث خطأ أثناء الاتصال بالـ API:\n" + err;
   }
 });
-
-document.getElementById("summarizeBtn").addEventListener("click", async () => {
-  const text = document.getElementById("lectureText").value.trim();
-  const resultEl = document.getElementById("summaryResult");
-
-  if (!text) {
-    resultEl.textContent = "❌ الرجاء إدخال نص المحاضرة.";
-    return;
-  }
-
-  resultEl.textContent = "جارٍ التحليل...";
-
-  try {
-    const response = await fetch("/api/summarize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text })
-    });
-    const data = await response.json();
-    if (data.success) {
-      resultEl.textContent = data.result;
-    } else {
-      resultEl.textContent = "❌ خطأ: " + data.error;
-    }
-  } catch (err) {
-    resultEl.textContent = "❌ حدث خطأ أثناء الاتصال بالـ API:\n" + err;
-  }
-});
 </script>
+
 </body>
 </html>
