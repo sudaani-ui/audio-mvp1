@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>منصة تلخيص المحاضرات AI</title>
 <style>
-body { font-family: Arial, sans-serif; background: #f5f6fa; margin:0; padding:0; }
+body { font-family: Arial, sans-serif; background:#f5f6fa; margin:0; padding:0; }
 header { background:#1e1e2f; color:white; padding:20px; text-align:center; font-size:1.8em; }
 main { max-width:900px; margin:30px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
 input[type=file] { display:block; margin-top:10px; }
@@ -26,7 +26,7 @@ h2 { color:#1e1e2f; }
 <input type="file" id="fileInput" multiple accept="image/*,.pdf">
 <h2>أو إدخال النص مباشرة</h2>
 <textarea id="lectureText" placeholder="انسخ النص هنا..."></textarea>
-<button id="analyzeBtn">تحليل المحاضرة</button>
+<button id="analyzeBtn">تحليل المحاضرة (10 صفحات فقط)</button>
 <div id="loader">جارٍ التحليل ... ⏳</div>
 
 <div class="output" id="summaryBox" style="display:none;">
@@ -86,11 +86,9 @@ analyzeBtn.addEventListener("click", async () => {
     return alert("يرجى إدخال نص أو رفع صور أولاً!");
   }
 
-  const words = text.split(/\s+/).length;
-  if (words > 70000) {
-    loader.style.display = "none";
-    return alert("النص طويل جدًا، الحد الأقصى ~100 صفحة");
-  }
+  // تقليل النص لأقصى 10 صفحات (~7000 كلمة)
+  let words = text.split(/\s+/);
+  if (words.length > 7000) text = words.slice(0,7000).join(" ");
 
   try {
     const res = await fetch("/api/summarize", {
